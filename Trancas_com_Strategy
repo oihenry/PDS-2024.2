@@ -1,0 +1,169 @@
+from abc import ABC, abstractmethod
+import tkinter as tk
+from tkinter import messagebox
+
+# Interface para Estratégia de Liberação
+class EstrategiaLiberacao(ABC):
+    """Interface para estratégias de liberação da tranca"""
+    
+    @abstractmethod
+    def liberar_tranca(self, id_tranca):
+        pass
+
+# Estratégia para liberação via RFID
+class LiberacaoRFID(EstrategiaLiberacao):
+    def liberar_tranca(self, id_tranca):
+        return f"Tranca {id_tranca} liberada via RFID!"
+
+# Estratégia para liberação eletrônica
+class LiberacaoEletronica(EstrategiaLiberacao):
+    def liberar_tranca(self, id_tranca):
+        return f"Tranca {id_tranca} liberada eletronicamente!"
+
+# Estratégia para liberação mecânica
+class LiberacaoMecanica(EstrategiaLiberacao):
+    def liberar_tranca(self, id_tranca):
+        return f"Tranca {id_tranca} liberada manualmente (chave mecânica)!"
+
+# Classe Tranca que utiliza o Strategy
+class Tranca:
+    """Classe que representa uma tranca que pode ser liberada por diferentes estratégias"""
+    
+    def _init_(self, id_tranca, estrategia: EstrategiaLiberacao):
+        self.id_tranca = id_tranca
+        self.estrategia = estrategia
+
+    def liberar(self):
+        """Executa a estratégia de liberação configurada"""
+        return self.estrategia.liberar_tranca(self.id_tranca)
+
+    def set_estrategia(self, nova_estrategia: EstrategiaLiberacao):
+        """Permite alterar a estratégia de liberação da tranca"""
+        self.estrategia = nova_estrategia
+
+# Interface gráfica
+class TrancaGUI:
+    def _init_(self, root):
+        self.root = root
+        self.root.title("Sistema de Controle de Trancas")
+        
+        # Frame principal
+        self.frame_principal = tk.Frame(root)
+        self.frame_principal.pack(padx=10, pady=10)
+        
+        # Entrada do ID da tranca
+        self.label_id = tk.Label(self.frame_principal, text="Digite o número da tranca:")
+        self.label_id.grid(row=0, column=0, sticky="w")
+        
+        self.entry_id = tk.Entry(self.frame_principal)
+        self.entry_id.grid(row=0, column=1, padx=5, pady=5)
+        
+        # Método de liberação
+        self.label_metodo = tk.Label(self.frame_principal, text="Escolha o método de liberação:")
+        self.label_metodo.grid(row=1, column=0, sticky="w")
+        
+        self.metodo_var = tk.StringVar(value="RFID")
+        
+        self.radio_rfid = tk.Radiobutton(self.frame_principal, text="RFID", variable=self.metodo_var, value="RFID")
+        self.radio_rfid.grid(row=1, column=1, sticky="w")
+        
+        self.radio_eletronico = tk.Radiobutton(self.frame_principal, text="Eletrônico", variable=self.metodo_var, value="Eletrônico")
+        self.radio_eletronico.grid(row=2, column=1, sticky="w")
+        
+        self.radio_mecanico = tk.Radiobutton(self.frame_principal, text="Mecânico", variable=self.metodo_var, value="Mecânico")
+        self.radio_mecanico.grid(row=3, column=1, sticky="w")
+        
+        # Botões
+        self.botao_liberar = tk.Button(self.frame_principal, text="Liberar Tranca", command=self.liberar_tranca)
+        self.botao_liberar.grid(row=4, column=0, pady=10)
+        
+        self.botao_sair = tk.Button(self.frame_principal, text="Sair", command=self.root.quit)
+        self.botao_sair.grid(row=4, column=1, pady=10)
+        
+        # Botão para limpar o histórico
+        self.botao_limpar_historico = tk.Button(self.frame_principal, text="Limpar Histórico", command=self.limpar_historico)
+        self.botao_limpar_historico.grid(row=4, column=2, pady=10)
+        
+        # Histórico de liberações
+        self.label_historico = tk.Label(self.frame_principal, text="Histórico de liberações:")
+        self.label_historico.grid(row=5, column=0, sticky="w")
+        
+        self.texto_historico = tk.Text(self.frame_principal, height=10, width=40)
+        self.texto_historico.grid(row=6, column=0, columnspan=3, pady=5)
+        
+        # Inicializa o histórico e a lista de IDs liberados
+        self.historico = []
+        self.ids_liberados = set()  # Usamos um conjunto para armazenar IDs únicos
+    
+    def liberar_tranca(self):
+        # Obtém o ID da tranca digitado pelo usuário
+        id_tranca = self.entry_id.get()
+        
+        # Validação de entrada
+        if not id_tranca:
+            messagebox.showerror("Erro", "Por favor, insira o número da tranca.")
+            return
+        if not id_tranca.isdigit():
+            messagebox.showerror("Erro", "O ID da tranca deve ser um número inteiro.")
+            return
+        
+        # Converte o ID da tranca para inteiro
+        id_tranca = int(id_tranca)
+        
+        # Valida se o ID da tranca é maior que 0
+        if id_tranca <= 0:
+            messagebox.showerror("Erro", "O ID da tranca deve ser maior que 0.")
+            return
+        
+        # Verifica se a tranca já foi liberada
+        if id_tranca in self.ids_liberados:
+            messagebox.showerror("Erro", f"Tranca {id_tranca} já foi liberada.")
+            return
+        
+        # Obtém o método de liberação selecionado
+        metodo = self.metodo_var.get()
+        
+        # Escolhe a estratégia com base no método selecionado
+        if metodo == "RFID":
+            estrategia = LiberacaoRFID()
+        elif metodo == "Eletrônico":
+            estrategia = LiberacaoEletronica()
+        else:
+            estrategia = LiberacaoMecanica()
+        
+        # Cria uma instância da tranca com a estratégia escolhida
+        tranca = Tranca(id_tranca, estrategia)
+        # Libera a tranca e obtém o resultado
+        resultado = tranca.liberar()
+        
+        # Exibe o resultado em uma caixa de mensagem
+        messagebox.showinfo("Sucesso", resultado)
+        
+        # Adiciona o resultado ao histórico
+        self.historico.append(resultado)
+        # Adiciona o ID da tranca à lista de IDs liberados
+        self.ids_liberados.add(id_tranca)
+        # Exibe o resultado na área de texto do histórico
+        self.texto_historico.insert(tk.END, resultado + "\n")
+        
+        # Limpa o campo de entrada do ID da tranca
+        self.entry_id.delete(0, tk.END)
+        # Redefine o método de liberação para RFID
+        self.metodo_var.set("RFID")
+    
+    def limpar_historico(self):
+        """Limpa o histórico de liberações e a lista de IDs liberados"""
+        self.texto_historico.delete(1.0, tk.END)  # Limpa a área de texto
+        self.historico.clear()  # Limpa a lista de histórico
+        self.ids_liberados.clear()  # Limpa a lista de IDs liberados
+        messagebox.showinfo("Sucesso", "Histórico limpo com sucesso!")
+
+# Ponto de entrada do programa
+if _name_ == "_main_":
+    # Cria a janela principal
+    root = tk.Tk()
+    # Inicializa a interface gráfica
+    app = TrancaGUI(root)
+    # Inicia o loop principal da interface gráfica
+    root.mainloop()
+    
